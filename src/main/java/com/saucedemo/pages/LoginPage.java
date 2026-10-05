@@ -18,6 +18,17 @@ public class LoginPage extends BasePage
         return this;
     }
 
+    public LoginPage enterUsername(String username) {
+        type(USERNAME, username);
+        return this;
+    }
+
+    public LoginPage enterPassword(String password) {
+        type(PASSWORD, password);
+        return this;
+    }
+
+    /** Happy-path login; returns the next page in the flow. */
     public ProductsPage loginAs(String user, String pass) {   // returns NEXT page
         type(USERNAME, user);
         type(PASSWORD, pass);
@@ -25,5 +36,19 @@ public class LoginPage extends BasePage
         return new ProductsPage(driver);
     }
 
+    /** Negative login; stays on the login page so the error can be asserted. */
+    public LoginPage loginExpectingFailure(String username, String password) {
+        if (username != null && !username.isEmpty()) {
+            enterUsername(username);
+        }
+        if (password != null && !password.isEmpty()) {
+            enterPassword(password);
+        }
+        click(LOGIN_BUTTON);
+        return this;
+    }
+
+    public boolean isErrorDisplayed() { return isDisplayed(ERROR);}
+    public boolean isLoginButtonDisplayed() { return isDisplayed(LOGIN_BUTTON);}
     public String getErrorMessage() { return getText(ERROR); }
 }
