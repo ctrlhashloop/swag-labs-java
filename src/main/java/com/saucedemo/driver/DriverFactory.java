@@ -4,46 +4,77 @@ import com.saucedemo.config.ConfigReader;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
+import org.openqa.selenium.edge.EdgeDriver;
+import org.openqa.selenium.edge.EdgeOptions;
+import org.openqa.selenium.firefox.FirefoxDriver;
+import org.openqa.selenium.firefox.FirefoxOptions;
 
-import java.sql.Driver;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
-public class DriverFactory
-{
-    // Owns the Browser
-    // Tests run in parallel, so each thread needs its own browser. That is what ThreadLocal gives you:
+/**
+ * Creates one WebDriver per thread so tests can run in parallel safely.
+ * Selenium Manager (built into Selenium 4.6+) downloads the right driver binary.
+ */
+public final class DriverFactory {
+
     private static final ThreadLocal<WebDriver> DRIVER = new ThreadLocal<>();
-    private DriverFactory() {};
 
-    /*
-    * The initDriver() method is responsible for setting up, configuring,
-    * and launching the browser instance, and then storing it safely for the current thread.*/
+    private DriverFactory() {
+    }
 
-    public static void initDriver(){
-        ChromeOptions options = new ChromeOptions();
+    public static void initDriver() {
+        String browser = ConfigReader.get("browser").toLowerCase();
+        boolean headless = ConfigReader.getBoolean("headless");
+        WebDriver driver;
 
-        if(ConfigReader.getBoolean("headless")){
-            options.addArguments("--headless=new", "--window-size=1920,1080");
+        switch (browser) {
+            case "firefox" -> {
+                FirefoxOptions options = new FirefoxOptions();
+                if (headless) {
+                    options.addArguments("-headless");
+                }
+                driver = new FirefoxDriver(options);
+            }
+            case "edge" -> {
+                EdgeOptions options = new EdgeOptions();
+                if (headless) {
+                    options.addArguments("--headless=new");
+                }
+                driver = new EdgeDriver(options);
+            }
+            default -> {
+                ChromeOptions options = new ChromeOptions();
+                if (headless) {
+                    options.addArguments("--headless=new", "--window-size=1920,1080");
+                }
+                options.addArguments("--disable-notifications", "--remote-allow-origins=*");
+                // Stop Chrome's password manager popups from interfering with the login tests
+                Map<String, Object> prefs = new HashMap<>();
+                prefs.put("credentials_enable_service", false);
+                prefs.put("profile.password_manager_enabled", false);
+                prefs.put("profile.password_manager_leak_detection", false);
+                options.setExperimentalOption("prefs", prefs);
+                driver = new ChromeDriver(options);
+            }
         }
-        // Stop Chrome's "save password" popups from blocking the login tests
-        Map<String, Object> prefs = new HashMap<>();
-        prefs.put("credentials_enable_service", false);
-        prefs.put("profile.password_manager_enabled", false);
-        options.setExperimentalOption("prefs", prefs);
 
-        WebDriver driver = new ChromeDriver(options);
-        driver.manage().timeouts().pageLoadTimeout(
-                Duration.ofSeconds(ConfigReader.getInteger("page.load.timeout.seconds")));
-        driver.manage().window().maximize();
+        driver.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(ConfigReader.getInteger("page.load.timeout.seconds")));
+        if (!headless) {
+            driver.manage().window().maximize();
+        }
         DRIVER.set(driver);
     }
 
-    public static WebDriver getDriver() { return DRIVER.get();}
-    public static void quitDriver(){
-        if(DRIVER.get() != null){
-            DRIVER.get().quit();
+    public static WebDriver getDriver() {
+        return DRIVER.get();
+    }
+
+    public static void quitDriver() {
+        WebDriver driver = DRIVER.get();
+        if (driver != null) {
+            driver.quit();
             DRIVER.remove();
         }
     }

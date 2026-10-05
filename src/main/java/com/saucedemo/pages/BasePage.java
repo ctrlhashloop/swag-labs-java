@@ -8,6 +8,7 @@ import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.time.Duration;
+import java.util.List;
 
 public abstract class BasePage{
     //Every page object extends this, so waiting logic lives in one place:
@@ -29,6 +30,10 @@ public abstract class BasePage{
         WebElement el = wait.until(ExpectedConditions.visibilityOfElementLocated(locator));
         el.clear();
         el.sendKeys(text);
+    }
+
+    protected List<WebElement> findAll(By locator) {
+        return driver.findElements(locator);
     }
 
     protected String getText(By locator) {
